@@ -142,12 +142,19 @@ class AP:
         print(current_accounts)
         return current_accounts
 
-    def list_current_videos(self):   # Current unassigned videos under Innovi
+    def list_current_videos(self, folder=None, account=None):   # Current unassigned videos under Innovi
         assigned_videos = []
         un_assigned_videos = []
         header = {'x-access-token': self.token}
-        current_videos = requests.get(
-            self.host + '/api/v1/sensors/ids', headers=header, verify=False).json()['sensors']
+        if not folder:
+            current_videos = requests.get(
+                self.host + '/api/v1/folder/{}/sensors/ids'.format(folder), headers=header, verify=False).json()['sensors']
+        if not account:
+            current_videos = requests.get(
+                self.host + '/api/v1/account/{}/sensors/ids'.format(account), headers=header, verify=False).json()['sensors']
+        else:
+            current_videos = requests.get(
+                self.host + '/api/v1/sensors/ids', headers=header, verify=False).json()['sensors']
         for sensor in range(len(current_videos)):
             if current_videos[sensor]['isUnassignedFolder']:
                 un_assigned_videos.append(current_videos[sensor]['id'])
