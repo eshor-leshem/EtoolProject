@@ -1,3 +1,5 @@
+#! /usr/bin/python
+
 """
 Installing python packages on client environment to use Etool
 """
