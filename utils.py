@@ -139,6 +139,7 @@ class AP:
         accounts = requests.get(self.host + '/api/v1/accounts', headers=header, verify=False).json()['accounts']
         for acc in range(len(accounts)):
             current_accounts.append([accounts[acc]['name'], accounts[acc]['id'], accounts[acc]['key']])
+        print(current_accounts)
         return current_accounts
 
     def list_current_videos(self):   # Current unassigned videos under Innovi
@@ -151,6 +152,7 @@ class AP:
             if current_videos[sensor]['isUnassignedFolder']:
                 un_assigned_videos.append(current_videos[sensor]['id'])
             assigned_videos.append(current_videos[sensor]['id'])
+        print(assigned_videos, un_assigned_videos)
         return assigned_videos, un_assigned_videos
 
     def create_account(self):
