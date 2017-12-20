@@ -132,7 +132,7 @@ class AP:
                 "Couldn't retrieve token, Please check the host name, email and password you provided."
                 " This is the Error -->", e)
         self.token = token.json()['token']
-
+        print(self.token)
     def list_current_accounts(self):  # Current accounts under Innovi
         current_accounts = []
         header = {'x-access-token': self.token}
@@ -142,21 +142,21 @@ class AP:
         print(current_accounts)
         return current_accounts
 
-    def list_current_videos(self, folder=None, account=None):   # Current unassigned videos under Innovi
+    def list_current_videos(self, account=None, folder=None):   # Current unassigned videos under Innovi
         assigned_videos = []
         un_assigned_videos = []
         header = {'x-access-token': self.token}
-        if not folder:
+        if folder:
             current_videos = requests.get(
-                self.host + '/api/v1/folder/{}/sensors/ids'.format(folder), headers=header, verify=False).json()['sensors']
-        if not account:
+                self.host + '/api/v1/folder/{}/sensors'.format(str(folder)), headers=header, verify=False).json()['sensors']
+        if account:
             current_videos = requests.get(
-                self.host + '/api/v1/account/{}/sensors/ids'.format(account), headers=header, verify=False).json()['sensors']
+                self.host + '/api/v1/account/{}/sensors'.format(str(account)), headers=header, verify=False).json()['sensors']
         else:
             current_videos = requests.get(
                 self.host + '/api/v1/sensors/ids', headers=header, verify=False).json()['sensors']
         for sensor in range(len(current_videos)):
-            if current_videos[sensor]['isUnassignedFolder']:
+            if current_videos[sensor]['folderName'] == "Unassigned Cameras" :
                 un_assigned_videos.append(current_videos[sensor]['id'])
             assigned_videos.append(current_videos[sensor]['id'])
         print(assigned_videos, un_assigned_videos)

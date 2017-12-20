@@ -33,7 +33,7 @@ def main():
     args = arg_parser()
     new_session = utils.AP(args.host, args.u, args.p)
     # new_session.list_current_accounts()
-    new_session.list_current_videos(args.a)
+    new_session.list_current_videos(args.a, args.f)
     # utils.AP.status_code_cheacker(new_session.create_account())
 
 
