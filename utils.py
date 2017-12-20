@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/python3
 
 """
 Utils collection to help test and configure "Innovi" system ("Etool")
