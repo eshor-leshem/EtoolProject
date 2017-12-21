@@ -31,9 +31,11 @@ def arg_parser():
 
 def main():
     args = arg_parser()
-    new_session = utils.AP(args.host, args.u, args.p)
+    new_session = utils.AdminPortal(args.host, args.u, args.p)
     # new_session.list_current_accounts()
     new_session.list_current_videos(args.a, args.f)
+    new_session.add_rule_moving_in_area()
+    new_session.add_rule_crossing_a_line()
     # utils.AP.status_code_cheacker(new_session.create_account())
 
 
