@@ -170,17 +170,14 @@ class AdminPortal:
         return self.assigned_videos, self.un_assigned_videos
 
     def add_rule_moving_in_area(self):
-        print("Creating rules")
         header = {'x-access-token': self.token, 'content-type': 'application/json'}
         body = {
             'ruleTypeId': 1, 'useEventEngine': 'true', 'isActive': 'true', 'scheduleId': 1,
             'ObjectClass': ["ObjectClass-Person", "ObjectClass-Vehicle", "ObjectClass-Bicycle", "ObjectClass-Motorcycle"],
-            'MinMaxFilters': [{'Type': 2, 'Min': 0.35, 'Max': 100}],
-            'FloatParameters': [{'Type': 0, 'Value': 1}, {'Type': 1, 'Value': 1}],
-            'Zones': [{'Polygon': {'Points': [{'X': 0.018544935805991, 'Y': 0.020922491678554},
-                                              {'X': 0.97860199714693, 'Y': 0.026628625772706},
-                                              {'X': 0.98716119828816, 'Y': 0.96814075130766},
-                                              {'X': 0.029957203994294, 'Y': 0.97574893009986}]}, 'Type': 0}]
+            'MinMaxFilters': [{'Type': 2, 'Min': 0.35, 'Max': 100}], 'FloatParameters': [{'Type': 0, 'Value': 1},
+            {'Type': 1, 'Value': 1}], 'Zones': [{'Polygon': {'Points': [{'X': 0.018544935805991, 'Y': 0.020922491678554},
+            {'X': 0.97860199714693, 'Y': 0.026628625772706}, {'X': 0.98716119828816, 'Y': 0.96814075130766},
+            {'X': 0.029957203994294, 'Y': 0.97574893009986}]}, 'Type': 0}]
         }
         for sensor in self.assigned_videos:
             print("Adding moving in area rule to {} sensor ".format(sensor))
@@ -188,18 +185,47 @@ class AdminPortal:
                 self.host + '/api/v1/rules/{}'.format(sensor), headers=header, data=json.dumps(body), verify=False)
 
     def add_rule_crossing_a_line(self):
-        print("Creating rules")
         header = {'x-access-token': self.token, 'content-type': 'application/json'}
         body = {
             'ruleTypeId': 2, 'useEventEngine': 'true', 'isActive': 'true', 'scheduleId': 1,
             'ObjectClass': ["ObjectClass-Person", "ObjectClass-Vehicle", "ObjectClass-Bicycle", "ObjectClass-Motorcycle"],
-            'MinMaxFilters': [{'Type': 2, 'Min': 0.35, 'Max': 100}],
-            'FloatParameters': [{'Type': 3, 'Value': 0.5}],
-            'Lines': [{'Polygon': {'Points': [{'X': 0.15, 'Y': 0.5}, {'X': 0.85, 'Y': 0.5}]}, 'CrossDirection': 1}]
-
+            'MinMaxFilters': [{'Type': 2, 'Min': 0.35, 'Max': 100}], 'FloatParameters': [{'Type': 3, 'Value': 0.5}],
+            'Lines': [{'Polygon': {'Points':[{'X': 0.15, 'Y': 0.5},{'X': 0.85, 'Y': 0.5}]},'CrossDirection': 1}]
         }
         for sensor in self.assigned_videos:
             print("Adding crossing a line rule to {} sensor ".format(sensor))
+            requests.post(
+                self.host + '/api/v1/rules/{}'.format(sensor), headers=header, data=json.dumps(body), verify=False)
+
+    def add_rule_occupancy(self):
+        header = {'x-access-token': self.token, 'content-type': 'application/json'}
+        body = {
+            'ruleTypeId': 3, 'useEventEngine': 'true', 'isActive': 'true', 'scheduleId': 1,
+            "ruleTypeName": "Occupancy", 'ObjectClass': ["ObjectClass-Person"], 'sensitivity': "2", 'dwellTime': 10,
+            'maxPeopleInGroup': 3, 'objectClassOptions': [{'id': 1}], 'size': 'true', 'timeWindow': 10, 'FloatParameters':
+            [{'Type': 2, 'Value': 3}, {'Type': 6, 'Value': 10}], "Zones": [{"Polygon": {"Points": [{"X": 0.15, "Y": 0.15},
+            {"X": 0.85, "Y": 0.15}, {"X": 0.85, "Y": 0.85}, {"X": 0.15, "Y": 0.85}]}, "Type": 0}],
+        }
+        for sensor in self.assigned_videos:
+            print("Adding occupancy rule to {} sensor ".format(sensor))
+            requests.post(
+                self.host + '/api/v1/rules/{}'.format(sensor), headers=header, data=json.dumps(body), verify=False)
+
+    def add_rule_stopped_vehicle(self):
+        header = {'x-access-token': self.token, 'content-type': 'application/json'}
+        body = {
+            'ruleTypeId': 4, 'useEventEngine': 'true', 'isActive': 'true', 'scheduleId': 1,
+            'ObjectClass': ["ObjectClass-Vehicle"],
+            'timeWindow': 10,
+            'FloatParameters': [{'Type': 0, 'Value': 30}],
+            "Zones": [{"Polygon": {"Points": [{"X": 0.01059322033898305, "Y": 0.01694915254237288},
+                                              {"X": 0.989406779661017, "Y": 0.022598870056497175},
+                                              {"X": 0.989406779661017, "Y": 0.9830508474576272},
+                                              {"X": 0.019067796610169493, "Y": 0.9774011299435028}]}, "Type": 0}]
+
+        }
+        for sensor in self.assigned_videos:
+            print("Adding stopped vehicle rule to {} sensor ".format(sensor))
             requests.post(
                 self.host + '/api/v1/rules/{}'.format(sensor), headers=header, data=json.dumps(body), verify=False)
 

@@ -36,6 +36,9 @@ def main():
     new_session.list_current_videos(args.a, args.f)
     new_session.add_rule_moving_in_area()
     new_session.add_rule_crossing_a_line()
+    new_session.add_rule_occupancy()
+    new_session.add_rule_stopped_vehicle()
+
     # utils.AP.status_code_cheacker(new_session.create_account())
 
 
