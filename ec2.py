@@ -4,6 +4,7 @@ import argparse
 import utils
 import sys
 
+
 def arg_parser():
     parser = argparse.ArgumentParser(
         description='EC2 tool',

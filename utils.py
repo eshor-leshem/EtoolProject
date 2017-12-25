@@ -92,29 +92,47 @@ class Aws:
     Set of modules for aws EC2 and ECS
     """
 
-    def __init__(self, aws_access_key_id, aws_secret_access_key, region_name, tag_name):
+    def __init__(self, aws_access_key_id, aws_secret_access_key, region_name):
         self.instances = []
         self.aws_access_key_id = aws_access_key_id
         self.aws_secret_access_key = aws_secret_access_key
-        self.tag_name = tag_name.split(',')
         self.region_name = region_name
         self.connection = boto3.resource('ec2', aws_access_key_id=self.aws_access_key_id,
                                          aws_secret_access_key=self.aws_secret_access_key, region_name=self.region_name)
 
-    def running_instances(self):
+    def running_instances(self, tag_name):
+        tag_name = tag_name.split(',')
         instance_query = self.connection.instances.filter(
             Filters=[{'Name': 'instance-state-name', 'Values': ['running']},
-                     {'Name': 'tag:Name', 'Values': self.tag_name}])
+                     {'Name': 'tag:Name', 'Values': tag_name}])
         for instance in instance_query:
             self.instances.append([instance.key_name, instance.id, instance.private_ip_address])
         return self.instances
 
-        # print("AS:")
-        # for instance in self.as_instances:
-        #     print(instance,sep=" ")
-        # print("CS:")
-        # for instance in self.cs_instances:
-        #     print(instance, sep=" ")
+
+class Clip(Aws):
+    def __init__(self, aws_access_key_id, aws_secret_access_key, region_name, name, builds):
+        super().__init__(aws_access_key_id, aws_secret_access_key, region_name)
+        self.name = name
+        self.builds = builds
+
+    def create_clip_encoder(self):
+        self.connection.create_instances(
+            ImageId='ami-34842b4c',
+            MinCount=1,
+            MaxCount=1,
+            KeyName="encoder-machine-key",
+            InstanceType="m4.2xlarge",
+            TagSpecifications=[{'ResourceType': 'instance',
+                              'Tags': [{'Key':'Name','Value':'etool_{}'.format(self.name)},]},]
+        )
+
+
+
+    # def create_instance(self,name):
+
+
+
 
 
 class AdminPortal:
