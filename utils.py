@@ -38,6 +38,16 @@ class Ssh:
         errors = stderr.readline()
         if errors:
             print("Errors while executing the command:\n{}".format(errors))
+        for line in stdout.readlines():
+                print(line)
+                return line
+
+
+    def execute_with_output_log(self, command):
+        stdin, stdout, stderr = self.ssh_client.exec_command(command)
+        errors = stderr.readline()
+        if errors:
+            print("Errors while executing the command:\n{}".format(errors))
         with open('output_{}_{}.txt'.format(self.dest_host, command), 'w') as file:  # Writing the output to a txt file
             for line in stdout.readlines():
                 file.write(line)
@@ -97,42 +107,60 @@ class Aws:
         self.aws_access_key_id = aws_access_key_id
         self.aws_secret_access_key = aws_secret_access_key
         self.region_name = region_name
-        self.connection = boto3.resource('ec2', aws_access_key_id=self.aws_access_key_id,
-                                         aws_secret_access_key=self.aws_secret_access_key, region_name=self.region_name)
+        self.resource = boto3.resource('ec2', aws_access_key_id=self.aws_access_key_id,
+                                       aws_secret_access_key=self.aws_secret_access_key, region_name=self.region_name)
+        self.client = boto3.client('ec2', aws_access_key_id=self.aws_access_key_id,
+                                   aws_secret_access_key=self.aws_secret_access_key, region_name=self.region_name)
 
-    def running_instances(self, tag_name):
+    def current_running_instances(self, tag_name):
         tag_name = tag_name.split(',')
-        instance_query = self.connection.instances.filter(
+        instance_query = self.resource.instances.filter(
             Filters=[{'Name': 'instance-state-name', 'Values': ['running']},
                      {'Name': 'tag:Name', 'Values': tag_name}])
         for instance in instance_query:
             self.instances.append([instance.key_name, instance.id, instance.private_ip_address])
         return self.instances
 
+    def is_instance_in_running_mode(self, tag_name):
+        tag_name = tag_name.split(',')
+        if self.resource.instances.filter(
+                Filters=[{'Name': 'instance-state-name', 'Values': ['running']},
+                         {'Name': 'tag:Name', 'Values': tag_name}]):
+            return True
+        return False
 
-class Clip(Aws):
+    def is_instance_status_ok(self, instance_id):
+        waiter = self.client.get_waiter('instance_status_ok')
+        print("Please wait..")
+        waiter.wait(InstanceIds=[instance_id])
+
+    def instance_id_to_ip(self, instance_id):
+        instance_ipv4 = self.resource.Instance(instance_id).public_ip_address
+        return instance_ipv4
+
+    def terminate_instances(self, instance_id):
+        for instance in instance_id:
+            print("Terminating previous clip machine ({})".format(instance[1]))
+            self.resource.instances.filter(InstanceIds=[instance[1]]).terminate()
+
+
+class EncoderClip(Aws):
     def __init__(self, aws_access_key_id, aws_secret_access_key, region_name, name, builds):
         super().__init__(aws_access_key_id, aws_secret_access_key, region_name)
         self.name = name
         self.builds = builds
 
     def create_clip_encoder(self):
-        self.connection.create_instances(
-            ImageId='ami-34842b4c',
-            MinCount=1,
-            MaxCount=1,
-            KeyName="encoder-machine-key",
-            InstanceType="m4.2xlarge",
-            TagSpecifications=[{'ResourceType': 'instance',
-                              'Tags': [{'Key':'Name','Value':'etool_{}'.format(self.name)},]},]
+        print("Creating a new clip machine - Etool_Encoder_{}".format(self.name))
+        new_instance_id = self.resource.create_instances(
+            ImageId='ami-34842b4c', MinCount=1, MaxCount=1, KeyName="encoder-machine-key",
+            InstanceType="c4.2xlarge", EbsOptimized=True, SecurityGroupIds=['sg-446f1d38'],
+            TagSpecifications=[{'ResourceType': 'instance', 'Tags':[
+                     {'Key': 'Name', 'Value': 'Etool_Encoder_{}'.format(self.name)},
+                     {'Key': 'Environment', 'Value': 'clips'},
+                     {'Key': 'SetBy', 'Value': 'Etool(Elad)'}]}, ]
         )
-
-
-
-    # def create_instance(self,name):
-
-
-
+        return new_instance_id[0].instance_id
 
 
 class AdminPortal:
@@ -191,11 +219,14 @@ class AdminPortal:
         header = {'x-access-token': self.token, 'content-type': 'application/json'}
         body = {
             'ruleTypeId': 1, 'useEventEngine': 'true', 'isActive': 'true', 'scheduleId': 1,
-            'ObjectClass': ["ObjectClass-Person", "ObjectClass-Vehicle", "ObjectClass-Bicycle", "ObjectClass-Motorcycle"],
+            'ObjectClass': ["ObjectClass-Person", "ObjectClass-Vehicle", "ObjectClass-Bicycle",
+                            "ObjectClass-Motorcycle"],
             'MinMaxFilters': [{'Type': 2, 'Min': 0.35, 'Max': 100}], 'FloatParameters': [{'Type': 0, 'Value': 1},
-            {'Type': 1, 'Value': 1}], 'Zones': [{'Polygon': {'Points': [{'X': 0.018544935805991, 'Y': 0.020922491678554},
-            {'X': 0.97860199714693, 'Y': 0.026628625772706}, {'X': 0.98716119828816, 'Y': 0.96814075130766},
-            {'X': 0.029957203994294, 'Y': 0.97574893009986}]}, 'Type': 0}]
+                                                                                         {'Type': 1, 'Value': 1}],
+            'Zones': [{'Polygon': {'Points': [{'X': 0.018544935805991, 'Y': 0.020922491678554},
+                                              {'X': 0.97860199714693, 'Y': 0.026628625772706},
+                                              {'X': 0.98716119828816, 'Y': 0.96814075130766},
+                                              {'X': 0.029957203994294, 'Y': 0.97574893009986}]}, 'Type': 0}]
         }
         for sensor in self.assigned_videos:
             print("Adding moving in area rule to {} sensor ".format(sensor))
@@ -206,9 +237,10 @@ class AdminPortal:
         header = {'x-access-token': self.token, 'content-type': 'application/json'}
         body = {
             'ruleTypeId': 2, 'useEventEngine': 'true', 'isActive': 'true', 'scheduleId': 1,
-            'ObjectClass': ["ObjectClass-Person", "ObjectClass-Vehicle", "ObjectClass-Bicycle", "ObjectClass-Motorcycle"],
+            'ObjectClass': ["ObjectClass-Person", "ObjectClass-Vehicle", "ObjectClass-Bicycle",
+                            "ObjectClass-Motorcycle"],
             'MinMaxFilters': [{'Type': 2, 'Min': 0.35, 'Max': 100}], 'FloatParameters': [{'Type': 3, 'Value': 0.5}],
-            'Lines': [{'Polygon': {'Points':[{'X': 0.15, 'Y': 0.5},{'X': 0.85, 'Y': 0.5}]},'CrossDirection': 1}]
+            'Lines': [{'Polygon': {'Points': [{'X': 0.15, 'Y': 0.5}, {'X': 0.85, 'Y': 0.5}]}, 'CrossDirection': 1}]
         }
         for sensor in self.assigned_videos:
             print("Adding crossing a line rule to {} sensor ".format(sensor))
@@ -220,9 +252,12 @@ class AdminPortal:
         body = {
             'ruleTypeId': 3, 'useEventEngine': 'true', 'isActive': 'true', 'scheduleId': 1,
             "ruleTypeName": "Occupancy", 'ObjectClass': ["ObjectClass-Person"], 'sensitivity': "2", 'dwellTime': 10,
-            'maxPeopleInGroup': 3, 'objectClassOptions': [{'id': 1}], 'size': 'true', 'timeWindow': 10, 'FloatParameters':
-            [{'Type': 2, 'Value': 3}, {'Type': 6, 'Value': 10}], "Zones": [{"Polygon": {"Points": [{"X": 0.15, "Y": 0.15},
-            {"X": 0.85, "Y": 0.15}, {"X": 0.85, "Y": 0.85}, {"X": 0.15, "Y": 0.85}]}, "Type": 0}],
+            'maxPeopleInGroup': 3, 'objectClassOptions': [{'id': 1}], 'size': 'true', 'timeWindow': 10,
+            'FloatParameters':
+                [{'Type': 2, 'Value': 3}, {'Type': 6, 'Value': 10}],
+            "Zones": [{"Polygon": {"Points": [{"X": 0.15, "Y": 0.15},
+                                              {"X": 0.85, "Y": 0.15}, {"X": 0.85, "Y": 0.85}, {"X": 0.15, "Y": 0.85}]},
+                       "Type": 0}],
         }
         for sensor in self.assigned_videos:
             print("Adding occupancy rule to {} sensor ".format(sensor))

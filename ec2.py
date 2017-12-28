@@ -23,7 +23,7 @@ def arg_parser():
 def main():
     args = arg_parser()
     new_inst = utils.Aws(args.id, args.key, args.region, args.tag)
-    current_instances = new_inst.running_instances()
+    current_instances = new_inst.current_running_instances()
     print('\n'.join([str(inst) for inst in sorted(current_instances)]),sep='/n')
 
 
